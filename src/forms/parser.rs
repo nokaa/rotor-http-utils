@@ -66,30 +66,34 @@ fn form_parser(i: Input<u8>) -> U8Result<Form> {
 ///
 /// For now we ignore carriage returns, as *nix dislikes them.
 ///
+/// Returns `Err(String)` if we receive invalid input, i.e. if
+/// `data` ends with `%` or `%X`.
+///
 /// ### Panics
 /// Panics if we are given an invalid hex value.
 ///
-/// Panics if we are given `%X` or just `%` as this is invalid
-/// data.
-///
 /// Panics if our hex value byte array (`d`) cannot be parsed to
 /// a `str`.
-pub fn replace_special_characters(data: &[u8]) -> Vec<u8> {
+pub fn replace_special_characters(data: &[u8]) -> Result<Vec<u8>, String> {
     let mut buf: Vec<u8> = vec![];
 
     let mut data = data.into_iter();
 
     while let Some(&c) = data.next() {
-    /*loop {
-        let c = match data.next() {
-            Some(c) => c,
-            None => break,
-        };*/
-
         if b'%' == c {
             let mut d: Vec<u8> = vec![];
-            d.push(*data.next().unwrap());
-            d.push(*data.next().unwrap());
+
+            if let Some(&c) = data.next() {
+                d.push(c);
+            } else {
+                return Err("Unexpected end of input!".to_string());
+            }
+            if let Some(&c) = data.next() {
+                d.push(c);
+            } else {
+                return Err("Unexpected end of input!".to_string());
+            }
+
             // This should not panic...
             // TODO(nokaa): Find out if we should do something else here.
             let val = str::from_utf8(&d[..]).unwrap();
@@ -109,5 +113,5 @@ pub fn replace_special_characters(data: &[u8]) -> Vec<u8> {
         }
     }
 
-    buf
+    Ok(buf)
 }
