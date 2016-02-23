@@ -35,6 +35,7 @@ static MESSAGES: [&'static str; 61] = ["Continue", "Switching Protocols",
 /// Handles redirects. Redirects `res` to `location`
 /// with code `code`. `data` should be a file/message that
 /// explains what happened to the user.
+/// Returns an `Err(String)` if an invalid code is received.
 pub fn redirect(res: &mut Response, data: &[u8], location: &[u8], code: u16) -> Result<(), String> {
     let message = match code_lookup(code) {
         Some(m) => m,
@@ -43,6 +44,25 @@ pub fn redirect(res: &mut Response, data: &[u8], location: &[u8], code: u16) -> 
 
     res.status(code, message);
     res.add_header("Location", location).unwrap();
+    res.add_length(data.len() as u64).unwrap();
+    res.done_headers().unwrap();
+    res.write_body(data);
+    res.done();
+
+    Ok(())
+}
+
+/// Handles sending a server error. This is useful
+/// for things like a 404. `data` should explain what
+/// happened to the user.
+/// Returns an `Err(String)` if an invalid code is received.
+pub fn error(res: &mut Response, data: &[u8], code: u16) -> Result<(), String> {
+    let message = match code_lookup(code) {
+        Some(m) => m,
+        None => return Err("Code not found!".to_string()),
+    };
+
+    res.status(code, message);
     res.add_length(data.len() as u64).unwrap();
     res.done_headers().unwrap();
     res.write_body(data);
