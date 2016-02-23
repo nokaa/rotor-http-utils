@@ -4,29 +4,70 @@ use std::io::{Read, Write};
 
 use rotor_http::server::Response;
 
-/// Sets headers for a HTTP 404 error.
-/// `data` should be a file/message that
-/// explains what happened to the user.
-pub fn four_o_four(res: &mut Response, data: &[u8]) {
-    res.status(404, "Not Found");
-    res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
-    res.done();
-}
+static CODES: [u16; 61] = [100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207,
+                           208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308,
+                           400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410,
+                           411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423,
+                           424, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504,
+                           505, 506, 507, 508, 510, 511];
+
+static MESSAGES: [&'static str; 61] = ["Continue", "Switching Protocols",
+                "Processing", "OK", "Created", "Accepted", "Non-Authoritative Information",
+                "No Content", "Reset Content", "Partial Content",
+                "Multi-Status", "Already Reported", "IM Used",
+                "Multiple Choices", "Moved Permanently", "Found", "See Other",
+                "Not Modified", "Use Proxy", "Switch Proxy", "Temporary Redirect",
+                "Permanent Redirect", "Bad Request", "Unauthorized",
+                "Payment Required", "Forbidden", "Not Found", "Method Not Allowed",
+                "Not Acceptable", "Proxy Authentication Required", "Request Timeout",
+                "Conflict", "Gone", "Length Required", "Precondition Failed",
+                "Payload Too Large", "URI Too Long", "Unsupported Media Type",
+                "Range not Satisfiable", "Expectation Failed", "I'm a teapot",
+                "Misdirected Request", "Unprocessable Entity", "Locked",
+                "Failed Dependency", "Upgrade Required", "Precondition Required",
+                "Too Many Requests", "Request Header Fields Too Large",
+                "Unavailable For Legal Reasons", "Internal Server Error",
+                "Not Implemented", "Bad Gateway", "Service Unavailable",
+                "Gateway Timeout", "HTTP Version Not Supported",
+                "Variant Also Negotiates", "Insufficient Storage", "Loop Detected",
+                "Not Extended", "Network Authentication Required"];
 
 /// Handles redirects. Redirects `res` to `location`
 /// with code `code`. `data` should be a file/message that
 /// explains what happened to the user.
-//
-// TODO(nokaa): We  want to allow an arbitrary code, with
-// the proper message sent. Right now this redirect only works
-// properly for a 302. This might be solved with two static
-// arrays, the first containing codes and the second containing
-// messages. We could then find the index of the code in the first,
-// and use the corresponding message in the second.
-pub fn redirect(res: &mut Response, data: &[u8], location: &[u8], code: u16) {
-    res.status(code, "Found");
+pub fn redirect(res: &mut Response, data: &[u8], location: &[u8], code: u16) -> Result<(), String> {
+    let message = match code_lookup(code) {
+        Some(m) => m,
+        None => return Err("Code not found!".to_string()),
+    };
+
+    res.status(code, message);
+    res.add_header("Location", location).unwrap();
+    res.add_length(data.len() as u64).unwrap();
+    res.done_headers().unwrap();
+    res.write_body(data);
+    res.done();
+
+    Ok(())
+}
+
+/// Handles retrieving the message associated with a given code.
+fn code_lookup<'a>(code: u16) -> Option<&'a str> {
+    if let Ok(index) = CODES.binary_search(&code) {
+        return Some(MESSAGES[index]);
+    }
+
+    None
+}
+
+/// Handles redirects. Redirects `res` to `location`
+/// with code `code` and message `message`. `data` should be a file/message that
+/// explains what happened to the user.
+///
+/// This function should only be used for nonstandard codes.
+pub fn redirect_with_message(res: &mut Response, data: &[u8], location: &[u8],
+                             code: u16, message: &str) {
+    res.status(code, message);
     res.add_header("Location", location).unwrap();
     res.add_length(data.len() as u64).unwrap();
     res.done_headers().unwrap();
@@ -132,7 +173,6 @@ pub fn read_file(filename: &str) -> Vec<u8> {
     buf
 }
 
-#[allow(dead_code)]
 /// Writes `data` to `filename`.
 pub fn write_file(filename: &str, data: &[u8]) -> Result<(), io::Error> {
     let mut file = try!(File::create(filename));
