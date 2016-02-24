@@ -4,6 +4,14 @@ use std::io::{Read, Write};
 
 use rotor_http::server::Response;
 
+// TODO(nokaa): Currently any of the functions dealing with
+// headers have the potential to cause a panic due to using
+// `unwrap` when modifiying headers. These functions should
+// probably return `Result<(), String>`, as panicing is
+// undesired behavior for most web servers. This will
+// greatly change the library interface, so this should
+// be done before release.
+
 static CODES: [u16; 61] = [100, 101, 102, 200, 201, 202, 203, 204, 205, 206, 207,
                            208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308,
                            400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410,
@@ -184,6 +192,11 @@ pub fn send_file_raw(res: &mut Response, filename: &str) {
 /// `read_file` panics if `filename` cannot be opened.
 ///
 /// Panics if `read_to_end` fails for `filename`.
+//
+// TODO(nokaa): We should handle errors rather than panicing.
+// This will change the interface of functions such as
+// `send_file_raw`, likely requiring us to return a `Result`
+// from affected functions.
 pub fn read_file(filename: &str) -> Vec<u8> {
     let mut f = File::open(filename).ok()
         .expect(&format!("Unable to open file {}!", filename)[..]);
