@@ -69,11 +69,6 @@ fn form_parser(i: Input<u8>) -> U8Result<Form> {
 /// Returns `Err(String)` if we receive invalid input, i.e. if
 /// `data` ends with `%` or `%X`.
 ///
-/// ### Panics
-/// Panics if we are given an invalid hex value.
-///
-/// Panics if our hex value byte array (`d`) cannot be parsed to
-/// a `str`.
 pub fn replace_special_characters(data: &[u8]) -> Result<Vec<u8>, String> {
     let mut buf: Vec<u8> = vec![];
 
@@ -94,11 +89,15 @@ pub fn replace_special_characters(data: &[u8]) -> Result<Vec<u8>, String> {
                 return Err("Unexpected end of input!".to_string());
             }
 
-            // This should not panic...
-            // TODO(nokaa): Find out if we should do something else here.
-            let val = str::from_utf8(&d[..]).unwrap();
-            let val = u8::from_str_radix(val, 16).ok()
-                .expect(&format!("Error parsing hex value {}", val)[..]);
+            let val = match str::from_utf8(&d[..]) {
+                Err(e) => return Err(format!("{}", e)),
+                Ok(v) => {
+                    match u8::from_str_radix(v, 16) {
+                        Ok(v) => v,
+                        Err(_) => return Err(format!("Error parsing hex value {}", v)),
+                    }
+                }
+            };
 
             // For now we are not pushing carriage returns, eventually we
             // should maybe check if we are on Windows or *nix?
