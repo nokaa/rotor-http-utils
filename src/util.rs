@@ -44,7 +44,9 @@ static MESSAGES: [&'static str; 61] = ["Continue", "Switching Protocols",
 /// with code `code`. `data` should be a file/message that
 /// explains what happened to the user.
 /// Returns an `Err(String)` if an invalid code is received.
-pub fn redirect(res: &mut Response, data: &[u8], location: &[u8], code: u16) -> Result<(), String> {
+pub fn redirect(res: &mut Response, data: &[u8],
+                location: &[u8], code: u16)
+    -> Result<(), String> {
     let message = match code_lookup(code) {
         Some(m) => m,
         None => return Err("Code not found!".to_string()),
@@ -130,16 +132,17 @@ pub fn send_string_raw(res: &mut Response, data: &[u8]) {
 /// Sends data read from `filename` to the client
 /// with status 200.
 ///
-/// ### Panics
-/// Panics if `filename` cannot be read.
-pub fn send_file(res: &mut Response, filename: &str) {
-    let data = &read_file(filename)[..];
+/// Returns `Err(io::Error)` if `filename` cannot be read.
+pub fn send_file(res: &mut Response, filename: &str) -> Result<(), io::Error> {
+    let data = &try!(read_file(filename))[..];
 
     res.status(200, "OK");
     res.add_length(data.len() as u64).unwrap();
     res.done_headers().unwrap();
     res.write_body(data);
     res.done();
+
+    Ok(())
 }
 
 /// Sends data read from `filename` to the client
@@ -147,10 +150,9 @@ pub fn send_file(res: &mut Response, filename: &str) {
 /// plain text.
 /// Sets `Content-Type` header to `text/plain`.
 ///
-/// ### Panics
-/// Panics if `filename` cannot be read.
-pub fn send_file_text(res: &mut Response, filename: &str) {
-    let data = &read_file(filename)[..];
+/// Returns `Err(io::Error)` if `filename` cannot be read.
+pub fn send_file_text(res: &mut Response, filename: &str) -> Result<(), io::Error> {
+    let data = &try!(read_file(filename))[..];
 
     res.status(200, "OK");
     // Add `Content-Type` header to ensure data is interpreted
@@ -162,6 +164,8 @@ pub fn send_file_text(res: &mut Response, filename: &str) {
     res.done_headers().unwrap();
     res.write_body(data);
     res.done();
+
+    Ok(())
 }
 
 /// Sends data read from `filename` to the client
@@ -169,10 +173,9 @@ pub fn send_file_text(res: &mut Response, filename: &str) {
 /// to the user for download.
 /// Sets `Content-Type` header to `application/octet-stream`.
 ///
-/// ### Panics
-/// Panics if `filename` cannot be read.
-pub fn send_file_raw(res: &mut Response, filename: &str) {
-    let data = &read_file(filename)[..];
+/// Returns `Err(io::Error)` if `filename` cannot be read.
+pub fn send_file_raw(res: &mut Response, filename: &str) -> Result<(), io::Error> {
+    let data = &try!(read_file(filename))[..];
 
     res.status(200, "OK");
     // Add `Content-Type` header to ensure data is interpreted
@@ -184,6 +187,8 @@ pub fn send_file_raw(res: &mut Response, filename: &str) {
     res.done_headers().unwrap();
     res.write_body(data);
     res.done();
+
+    Ok(())
 }
 
 /// Read file `filename` into a `Vec<u8>`.
@@ -192,18 +197,12 @@ pub fn send_file_raw(res: &mut Response, filename: &str) {
 /// `read_file` panics if `filename` cannot be opened.
 ///
 /// Panics if `read_to_end` fails for `filename`.
-//
-// TODO(nokaa): We should handle errors rather than panicing.
-// This will change the interface of functions such as
-// `send_file_raw`, likely requiring us to return a `Result`
-// from affected functions.
-pub fn read_file(filename: &str) -> Vec<u8> {
-    let mut f = File::open(filename).ok()
-        .expect(&format!("Unable to open file {}!", filename)[..]);
+pub fn read_file(filename: &str) -> Result<Vec<u8>, io::Error> {
+    let mut f = try!(File::open(filename));
     let mut buf: Vec<u8> = vec![];
-    f.read_to_end(&mut buf).unwrap();
+    try!(f.read_to_end(&mut buf));
 
-    buf
+    Ok(buf)
 }
 
 /// Writes `data` to `filename`.
