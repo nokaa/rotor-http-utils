@@ -40,7 +40,11 @@ pub fn parse_form(data: &[u8]) -> Result<HashMap<String, Vec<u8>>, String> {
         // E.g. `file type` is a valid form name, but is
         // received as `file+type`.
         let name = try!(parser::replace_special_characters(form.name));
-        let name = str::from_utf8(&name[..]).unwrap().to_string();
+        let name = match str::from_utf8(&name[..]) {
+            Ok(n) => n.to_string(),
+            Err(e) => return Err(format!("{}", e)),
+        };
+
         let value = try!(parser::replace_special_characters(form.value));
         form_map.insert(name, value);
     }
