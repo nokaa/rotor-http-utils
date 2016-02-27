@@ -55,8 +55,9 @@ pub fn redirect(res: &mut Response, data: &[u8],
     res.status(code, message);
     res.add_header("Location", location).unwrap();
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 
     Ok(())
@@ -74,8 +75,9 @@ pub fn error(res: &mut Response, data: &[u8], code: u16) -> Result<(), String> {
 
     res.status(code, message);
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 
     Ok(())
@@ -100,8 +102,9 @@ pub fn redirect_with_message(res: &mut Response, data: &[u8], location: &[u8],
     res.status(code, message);
     res.add_header("Location", location).unwrap();
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 }
 
@@ -109,8 +112,9 @@ pub fn redirect_with_message(res: &mut Response, data: &[u8], location: &[u8],
 pub fn send_string(res: &mut Response, data: &[u8]) {
     res.status(200, "OK");
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 }
 
@@ -124,8 +128,9 @@ pub fn send_string_raw(res: &mut Response, data: &[u8]) {
                    "text/plain; charset=utf-8".as_bytes())
         .unwrap();
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 }
 
@@ -138,8 +143,9 @@ pub fn send_file(res: &mut Response, filename: &str) -> Result<(), io::Error> {
 
     res.status(200, "OK");
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 
     Ok(())
@@ -161,8 +167,9 @@ pub fn send_file_text(res: &mut Response, filename: &str) -> Result<(), io::Erro
                    "text/plain; charset=utf-8".as_bytes())
         .unwrap();
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 
     Ok(())
@@ -184,8 +191,9 @@ pub fn send_file_raw(res: &mut Response, filename: &str) -> Result<(), io::Error
                    "application/octet-stream; charset=utf-8".as_bytes())
         .unwrap();
     res.add_length(data.len() as u64).unwrap();
-    res.done_headers().unwrap();
-    res.write_body(data);
+    if res.done_headers().unwrap() {
+        res.write_body(data);
+    }
     res.done();
 
     Ok(())
