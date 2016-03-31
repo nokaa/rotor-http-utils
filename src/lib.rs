@@ -4,4 +4,5 @@ extern crate rand;
 extern crate rotor_http;
 
 pub mod util;
+pub mod file;
 pub mod forms;

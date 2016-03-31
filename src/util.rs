@@ -1,8 +1,8 @@
-use std::fs::File;
 use std::io;
-use std::io::{Read, Write};
 
 use rotor_http::server::Response;
+
+use file;
 
 // TODO(nokaa): Currently any of the functions dealing with
 // headers have the potential to cause a panic due to using
@@ -139,7 +139,7 @@ pub fn send_string_raw(res: &mut Response, data: &[u8]) {
 ///
 /// Returns `Err(io::Error)` if `filename` cannot be read.
 pub fn send_file(res: &mut Response, filename: &str) -> Result<(), io::Error> {
-    let data = &try!(read_file(filename))[..];
+    let data = &try!(file::read_file(filename))[..];
 
     res.status(200, "OK");
     res.add_length(data.len() as u64).unwrap();
@@ -158,7 +158,7 @@ pub fn send_file(res: &mut Response, filename: &str) -> Result<(), io::Error> {
 ///
 /// Returns `Err(io::Error)` if `filename` cannot be read.
 pub fn send_file_text(res: &mut Response, filename: &str) -> Result<(), io::Error> {
-    let data = &try!(read_file(filename))[..];
+    let data = &try!(file::read_file(filename))[..];
 
     res.status(200, "OK");
     // Add `Content-Type` header to ensure data is interpreted
@@ -182,7 +182,7 @@ pub fn send_file_text(res: &mut Response, filename: &str) -> Result<(), io::Erro
 ///
 /// Returns `Err(io::Error)` if `filename` cannot be read.
 pub fn send_file_raw(res: &mut Response, filename: &str) -> Result<(), io::Error> {
-    let data = &try!(read_file(filename))[..];
+    let data = &try!(file::read_file(filename))[..];
 
     res.status(200, "OK");
     // Add `Content-Type` header to ensure data is interpreted
@@ -196,26 +196,5 @@ pub fn send_file_raw(res: &mut Response, filename: &str) -> Result<(), io::Error
     }
     res.done();
 
-    Ok(())
-}
-
-/// Read file `filename` into a `Vec<u8>`.
-///
-/// ### Panics
-/// `read_file` panics if `filename` cannot be opened.
-///
-/// Panics if `read_to_end` fails for `filename`.
-pub fn read_file(filename: &str) -> Result<Vec<u8>, io::Error> {
-    let mut f = try!(File::open(filename));
-    let mut buf: Vec<u8> = vec![];
-    try!(f.read_to_end(&mut buf));
-
-    Ok(buf)
-}
-
-/// Writes `data` to `filename`.
-pub fn write_file(filename: &str, data: &[u8]) -> Result<(), io::Error> {
-    let mut file = try!(File::create(filename));
-    try!(file.write_all(data));
     Ok(())
 }
