@@ -1,57 +1,70 @@
-use chomp::{Input, U8Result};
-use chomp::parsers::{take_remainder, take_while, take_while1, token};
-use chomp::combinators::{many, or};
-
+use std::collections::HashMap;
 use std::str;
 use std::u8;
 
+//use nom;
+
+/// This function recevies our form data byte array as input
+/// and returns a map of the form
+/// ```text
+/// { name: value }
+/// ```
+///
+/// `Err(String)` is returned if there is an error with parsing,
+/// or if `data` is invalid.
+//
+// TODO(nokaa): This function is currently O(n^2).
+// This is unacceptable, we must refactor it to be O(n).
+// The issue is that we parse the form into names and values,
+// and then we parse through each name and value to replace
+// escaped characters. Escaped characters ought be replaced
+// during the inital parse.
+pub fn parse_form(data: &[u8]) -> Result<HashMap<String, Vec<u8>>, String> {
+    use nom::IResult::*;
+    let mut form_map: HashMap<String, Vec<u8>> = HashMap::new();
+
+    let forms = match form_data_parser(data) {
+        Done(_, f) => f,
+        _ => return Err(String::from("Error parsing data")),
+    };
+
+    for form in &forms {
+        let name = try!(replace_special_characters(form.name));
+        let name = match str::from_utf8(&name[..]) {
+            Ok(n) => n.to_string(),
+            Err(e) => return Err(format!("{}", e)),
+        };
+
+        let value = try!(replace_special_characters(form.value));
+        form_map.insert(name, value);
+    }
+
+    Ok(form_map)
+}
+
 /// The type used for parsing form data
 #[derive(Debug)]
-pub struct Form<'a> {
+struct Form<'a> {
     /// The `name` field in an html input
     pub name: &'a [u8],
     /// The value associated with the input field
     pub value: &'a [u8],
 }
 
-/// Parse through all form data and return `Vec` of all `Form`s
-pub fn form(i: Input<u8>) -> U8Result<Vec<Form>> {
-    many(i, form_parser)
-}
+named!(form_data_parser<&[u8], Vec<Form> >, many0!(form_parser));
+named!(form_parser<&[u8], Form>,
+    chain!(
+        name: name ~
+        val: value ,
 
-fn form_parser(i: Input<u8>) -> U8Result<Form> {
-    // Suppose that we have a form with two text inputs named
-    // `q` and `r`. We also have a button to submit this form
-    // with type `submit` and name `action`. We will receive this
-    // as `q=&r=&action=`. With appropriate values after the `=`.
-    //
-    // We need two parsers in order to properly parse this. The first
-    // parser handles the data of the form `q=val&`, returning
-    // `Form{name = q, value = val}`.
-    // The second parser handles data of the form `q=val`, returning
-    // the same as the former.
-    or(i,
-        parser!{
-            let name = take_while1(|c| c != b'=');
-            token(b'=');
-            let value = take_while(|c| c != b'&');
-            token(b'&');
+        ||{Form{name: name, value: val}}
+    )
+);
+named!(name, take_until_and_consume!([b'=']));
+named!(value, alt!(take_until_and_consume!([b'&']) | take_while!(t)));
 
-            ret Form{
-                name: name,
-                value: value,
-            }
-        },
-        parser!{
-            let name = take_while1(|c| c != b'=');
-            token(b'=');
-            let value = take_remainder();
-
-            ret Form{
-                name: name,
-                value: value,
-            }
-        })
+fn t<T> (_: T) -> bool {
+    true
 }
 
 /// When we receive form data with enctype

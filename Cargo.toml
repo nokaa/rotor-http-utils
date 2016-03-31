@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["nokaa <nokaa@cock.li>"]
 
 [dependencies]
-chomp = "0.2.4"
+nom = "1.2.1"
 rotor-http = { git = "https://github.com/tailhook/rotor-http" }
 rand = "0.3"
